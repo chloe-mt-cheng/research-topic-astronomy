@@ -49,14 +49,15 @@ def res_cat(residuals, errors):
 	all_err = np.concatenate(errors, axis=0)
 	return all_res, all_err
 
-def cum_dist(all_res, all_err):
-    num_res = len(all_res)
-    y_ax = np.linspace(0, 1, num_res)
-    cdist = np.sort(all_res/all_err)
-    return y_ax, cdist
+def cum_dist(residuals, errors):
+	all_res, all_err = res_cat(residuals, errors)
+	num_res = len(all_res)
+	y_ax = np.linspace(0, 1, num_res)
+	cdist = np.sort(all_res/all_err)
+	return y_ax, cdist
 
-def cum_dist_plot(all_res, all_err, obj, cluster, axvline=False):
-    y_ax, cdist = cum_dist(all_res, all_err)
+def cum_dist_plot(residuals, errors, obj, cluster, axvline=False):
+    y_ax, cdist = cum_dist(residuals, errors)
     title_str = 'Cumulative Distribution of ' + str(obj) + ' from ' + str(cluster) 
     save_str = 'cdist' + '_' + str(obj) + '_' + str(cluster) + '.pdf'
     
@@ -72,9 +73,38 @@ def cum_dist_plot(all_res, all_err, obj, cluster, axvline=False):
         plt.axvline(0, color='r')
     plt.savefig(save_str, bbox_inches='tight')
     
+def cum_dist_rev(residuals, errors):
+    all_res, all_err = res_cat(residuals, errors)
+    num_res = len(all_res)
+    y_ax = np.linspace(0, 1, num_res)
+    div_array = all_res/all_err
+    rev_div_array = div_array[::-1]
+    cdist = np.sort(rev_div_array)
+    return y_ax, cdist
+
+def symm_plot(residuals, errors, obj, cluster, axvline=False):
+	y_ax, cdist = cum_dist(residuals, errors)
+	rev_y_ax, rev_cdist = cum_dist_rev(residuals, errors)
+	title_str = 'Cumulative Distribution of ' + str(obj) + ' from ' + str(cluster) 
+	save_str = 'symm_overplot' + '_' + str(obj) + '_' + str(cluster) + '.pdf'
+	
+	plt.figure(figsize=(10,8))
+	plt.title(title_str, fontsize=20)
+	plt.plot(cdist, y_ax, color='k', label='Sorted Data')
+	plt.plot(rev_cdist, rev_y_ax, color='b', linestyle='dotted', linewidth=5, label='Reverse-Sorted Data')
+	plt.xlabel("Normalized Residual", fontsize=15)
+	plt.ylabel("Probability", fontsize=15)
+	plt.xticks(fontsize=12)
+	plt.yticks(fontsize=12)
+	plt.xlim(-4, 4)
+	plt.legend()
+	if axvline==True:
+		plt.axvline(0, color='r')
+	plt.savefig(save_str, bbox_inches='tight')
+    
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
 	residuals, errors = imports(arguments['--cluster'], arguments['--element'])
-	all_res, all_err = res_cat(residuals, errors)
-	elem_cdist_plot = cum_dist_plot(all_res, all_err, arguments['--element'], arguments['--cluster'], axvline=False)
+	elem_cdist_plot = cum_dist_plot(residuals, errors, arguments['--element'], arguments['--cluster'], axvline=False)
+	elem_symm_plot = symm_plot(residuals, errors, arguments['--element'], arguments['--cluster'], axvline=False)
