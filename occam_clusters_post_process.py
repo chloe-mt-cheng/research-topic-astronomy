@@ -30,11 +30,12 @@ import h5py
 import glob
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+import os
 fs=16
 plt.rc('font', family='serif',size=fs)
 
-def imports(name, elem):
-	path = '/Users/chloecheng/Personal/' + str(name) + '_' + str(elem) + '_' + 'fit_res' + '.hdf5'
+def imports(cluster, elem, dat_type):
+	path = '/Users/chloecheng/Personal/' + str(cluster) + '/' + str(cluster) + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
 	file = h5py.File(path, 'r')
 	residuals = file['residuals'].value
 	errors = file['err_200'].value
@@ -49,12 +50,42 @@ def res_cat(residuals, errors):
 	all_err = np.concatenate(errors, axis=0)
 	return all_res, all_err
 
-def cum_dist(residuals, errors):
+def make_directory_cdist(cluster):
+    if glob.glob('/Users/chloecheng/Personal/' + str(cluster) + '/' + 'cdist'):
+        return None
+    else:
+        os.makedirs('/Users/chloecheng/Personal/' + str(cluster) + '/' + 'cdist')
+
+def cum_dist(cluster, elem, dat_type, residuals, errors, sigma_val=None):
 	all_res, all_err = res_cat(residuals, errors)
 	num_res = len(all_res)
 	y_ax = np.linspace(0, 1, num_res)
 	cdist = np.sort(all_res/all_err)
-	return y_ax, cdist
+	
+	path = '/Users/chloecheng/Personal/' + str(cluster) + '/cdist/' + str(cluster) + '_' + elem + '_' + str(dat_type) + '_' + 'cdist' + '.hdf5'
+	if sigma_val == None:
+		if glob.glob(path):
+			return y_ax, cdist
+		else:
+			file = h5py.File(path, 'w')
+			file['cumulative_distribution'] = cdist
+			file['y_ax'] = y_ax
+			file.close()
+			return y_ax, cdist
+	else:
+		if glob.glob(path):
+			file = h5py.File(path, 'a')
+			grp = file.create_group(str(sigma_val))
+			grp['cumulative_distribution'] = cdist
+			grp['y_ax'] = y_ax
+			file.close()
+		else: 
+			file = h5py.File(path, 'w')
+			grp = file.create_group(str(sigma_val))
+			grp['cumulative_distribution'] = cdist
+			grp['y_ax'] = y_ax
+			file.close()
+		return y_ax, cdist
 
 def cum_dist_plot(residuals, errors, obj, cluster, axvline=False):
     y_ax, cdist = cum_dist(residuals, errors)
@@ -106,5 +137,7 @@ if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
 	residuals, errors = imports(arguments['--cluster'], arguments['--element'])
+	y_ax, cdist = cum_dist(arguments['--cluster'], arguments['--element'], residuals, errors)
+	cdist_dir = make_directory_cdist(arguments['--cluster'])
 	elem_cdist_plot = cum_dist_plot(residuals, errors, arguments['--element'], arguments['--cluster'], axvline=False)
 	elem_symm_plot = symm_plot(residuals, errors, arguments['--element'], arguments['--cluster'], axvline=False)
