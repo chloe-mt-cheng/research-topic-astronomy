@@ -3,6 +3,7 @@ import numpy as np
 ## Polynomial Model from Yuan-Sen Ting (Rix+ 2017) ##
 
 psminfo = np.load('/Users/chloecheng/Personal/kurucz_quadratic_psm.npz')
+#psminfo = np.load('/geir_data/scr/ccheng/AST425/Personal/kurucz_quadratic_psm.npz')
 coeff_array = psminfo['coeff_array']
 
 # a set of training labels
