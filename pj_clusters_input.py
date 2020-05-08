@@ -1,28 +1,22 @@
-"""Usage: occam_clusters_input.py [-h][--cluster=<arg>][--scale_factor=<arg>][--element=<arg>][--type=<arg>]
+"""Usage: pj_clusters_input.py [-h][--cluster=<arg>][--element=<arg>][--type=<arg>]
 
 Examples:
-	Cluster name: e.g. input --cluster='NGC 2682'
-	Scale factor: e.g. input --scale_factor='1.4'
+	Cluster name: e.g. input --cluster='PJ_26'
 	Element name: e.g. input --element='AL'
 	Type: e.g. input --type='simulation'
 
 -h  Help file
 --cluster=<arg>  Cluster name
---scale_factor=<arg> Error scaling factor
 --element=<arg>  Element name
 --type=<arg>  Data type 
 
 """
 
-#Imports
 from docopt import docopt
 #apogee package 
 import apogee.tools.read as apread
 from apogee.tools.path import change_dr
-from apogee.tools import bitmask as bm
-change_dr('14') #use DR14
-#astropy helper functions
-import astropy.io.fits as afits
+change_dr('16') #use DR14
 #basic math and plotting
 import numpy as np
 import pandas as pd
@@ -34,30 +28,28 @@ import os
 fs=16
 plt.rc('font', family='serif',size=fs)
 
-def get_spectra(name, scale_factor=None):
+def get_spectra(name):
 	"""Return cluster data, spectra, spectral errors, and bitmask from APOGEE.
 	
 	If the data file for the specified cluster already exists locally, 
 	import the data from the file (cluster data, spectra, spectral errors, bitmask).
 	If the data file does not exist, obtain the APOGEE spectra from a specified cluster 
-	from the allStar catalogue, replacing ASPCAP abundances with astroNN abundances.
+	from the published_clusters.npy catalogue.
 	
 	Parameters
 	----------
 	name : str
-		Name of desired cluster (i.e. 'NGC 2682') 
-	scale_factor : int, optional
-		Factor by which to scale spectral errors (default is None)
+		Name of desired cluster (i.e. 'PJ_26') 
 	
 	Returns
 	-------
-	apogee_cluster_data : structured array
+	cluster_data : structured array
 		All cluster data from APOGEE
-	spectra_50 : tuple
+	cluster_spectra : tuple
 		Array of floats representing the cleaned-up fluxes in the APOGEE spectra
-	spectra_err_50 : tuple
+	cluster_spectra_errs : tuple
 		Array of floats representing the cleaned-up spectral errors from the APOGEE spectra
-	good_T : tuple
+	cluster_T : tuple
 		Array of floats representing the effective temperatures of the stars in the cluster
 		between 4000K and 5000K
 	full_bitmask : tuple
@@ -65,65 +57,49 @@ def get_spectra(name, scale_factor=None):
 		in the APOGEE_PIXMASK bitmask
 	"""
 	
-	#Personal path, strip spaces in cluster name
-	#path = '/Users/chloecheng/Personal/' + str(name).replace(' ', '') + '.hdf5'
-	#Server path, strip spaces in cluster name 
-	path = '/geir_data/scr/ccheng/AST425/Personal/' + str(name).replace(' ', '') + '.hdf5' 
+	#path = '/Users/chloecheng/Personal/' + str(name) + '.hdf5' #Personal path
+	path = '/geir_data/scr/ccheng/AST425/Personal/' + str(name) + '.hdf5' #Server path
 	
 	#If the data file for this cluster exists, save the data to variables
 	if glob.glob(path):
 		file = h5py.File(path, 'r')
-		apogee_cluster_data = file['apogee_cluster_data'].value
-		spectra_50 = file['spectra'].value
-		spectra_err_50 = file['spectra_errs'].value
+		cluster_data = file['apogee_cluster_data'].value
+		cluster_spectra = file['spectra'].value
+		cluster_spectra_errs = file['spectra_errs'].value
+		cluster_T = file['T'].value
 		full_bitmask = file['bitmask'].value
+		missing_spectra = file['missing_spectra'].value
 		file.close()
-		
-		#Get temperatures
-		T = apogee_cluster_data["TEFF"]
-		good_T_inds = (T > 4000) & (T < 5000)
-		good_T = T[good_T_inds]
 		
 		print(name, ' complete.')
 		
-	#If the file does not exist, get the data from APOGEE
+	#If the file does not exist
 	else:
-		#Read in APOGEE catalogue data, removing duplicated stars and replacing ASPCAP with astroNN abundances
-		apogee_cat = apread.allStar(use_astroNN_abundances=True)
-		unique_apoids,unique_inds = np.unique(apogee_cat['APOGEE_ID'],return_index=True)
-		apogee_cat = apogee_cat[unique_inds]
-		
-		#Read in overall cluster information
-		cls = afits.open('occam_cluster-DR14.fits')
-		cls = cls[1].data
-		
-		#Read in information about cluster members
-		members = afits.open('occam_member-DR14.fits')
-		members = members[1].data
-		
-		#Select all members of a given cluster
-		cluster_members = (members['CLUSTER']==name) & (members['MEMBER_FLAG']=='GM') #second part of the mask indicates to only use giant stars
-		member_list = members[cluster_members]
-		
-		#Find APOGEE entries for that cluster
-		#numpy.in1d finds the 1D intersection between two lists. 
-		#In this case we're matching using the unique APOGEE ID assigned to each star
-		#The indices given by numpy.in1d are for the first argument, so in this case the apogee catalogue
-		cluster_inds = np.in1d((apogee_cat['APOGEE_ID']).astype('U100'),member_list['APOGEE_ID'])
-		apogee_cluster_data = apogee_cat[cluster_inds]
+		#Read in PJ catalogue data
+		#apogee_cluster_data = np.load('/Users/chloecheng/Personal/published_clusters.npy') #Personal path
+		apogee_cluster_data = np.load('/geir_data/scr/ccheng/AST425/Personal/published_clusters.npy') #Server path
+
+		#Get temperatures
 		T = apogee_cluster_data["TEFF"]
 		
-		#Get spectra, spectral errors, and bitmask for each star - apStar
-		#We can use the APOGEE package to read each star's spectrum
-		#We'll read in the ASPCAP spectra, which have combined all of the visits for each star and removed the spaces between the spectra
-		number_of_members = len(member_list)
+		#Get spectra for each star
+		number_of_members = 360
 		spectra = np.zeros((number_of_members, 7514))
 		spectra_errs = np.zeros((number_of_members, 7514))
 		bitmask = np.zeros((number_of_members, 7514))
+		missing_spectra = []
 		for s,star in enumerate(apogee_cluster_data):
-			spectra[s] = apread.aspcapStar(star['LOCATION_ID'],star['APOGEE_ID'],ext=1,header=False,dr='14',aspcapWavegrid=True)
-			spectra_errs[s] = apread.aspcapStar(star['LOCATION_ID'],star['APOGEE_ID'],ext=2,header=False,dr='14',aspcapWavegrid=True)
-			bitmask[s] = apread.apStar(star['LOCATION_ID'],star['APOGEE_ID'],ext=3,header=False,dr='14', aspcapWavegrid=True)[1]
+			loc = star['FIELD'].decode('utf-8')
+			apo = star['APOGEE_ID'].decode('utf-8')
+			try:
+				spectra[s] = apread.aspcapStar(loc,apo,ext=1,header=False,dr='16',aspcapWavegrid=True,telescope=star['TELESCOPE'].decode('utf-8'))
+				spectra_errs[s] = apread.aspcapStar(loc,apo,ext=2,header=False,dr='16',aspcapWavegrid=True,telescope=star['TELESCOPE'].decode('utf-8'))
+				bitmask[s] = apread.apStar(loc,apo,ext=3,header=False,dr='16', aspcapWavegrid=True,telescope=star['TELESCOPE'].decode('utf-8'))[1]
+			#If the spectrum is missing, set bitmask to value that will be removed
+			except OSError:
+				bitmask[s] = -1.0
+				missing_spec.append(s)
+				print('missing ',star['APOGEE_ID'].decode("utf-8"))
 		
 		#Set all entries in bitmask to integers	
 		bitmask = bitmask.astype(int)
@@ -148,7 +124,7 @@ def get_spectra(name, scale_factor=None):
 		full_spectra_errs = np.array(full_spectra_errs)
 		full_bitmask = np.array(full_bitmask)
 		
-		#Create array of NaNs to replace flagged values in spectra
+		#Create array of nans to replace flagged values in spectra
 		masked_spectra = np.empty_like(full_spectra)
 		masked_spectra_errs = np.empty_like(full_spectra_errs)
 		masked_spectra[:] = np.nan
@@ -181,26 +157,102 @@ def get_spectra(name, scale_factor=None):
 		#Cut errors with SNR of less than 50
 		spectra_50 = np.copy(final_spectra)
 		spectra_err_50 = np.copy(spectra_err_200)
-		
 		for i in range(len(final_spectra)):
 			for j in range(7514):
 				if final_spectra[i][j]/spectra_err_200[i][j] <= 50:
 					spectra_50[i][j] = np.nan
 					spectra_err_50[i][j] = np.nan
+					
+		#Separate out individual clusters
+		cluster_ids = apogee_cluster_data['CLUSTER_ID']
+		PJ_26 = []
+		PJ_95 = []
+		PJ_471 = []
+		PJ_162 = []
+		PJ_398 = []
+		PJ_151 = []
+		PJ_230 = []
+		PJ_939 = []
+		PJ_262 = []
+		PJ_289 = []
+		PJ_359 = []
+		PJ_396 = []
+		PJ_899 = []
+		PJ_189 = []
+		PJ_574 = []
+		PJ_641 = []
+		PJ_679 = []
+		PJ_1976 = []
+		PJ_88 = []
+		PJ_1349 = []
+		PJ_1811 = []
 		
-		#Scale the errors by a selected factor
-		#scaled_err = spectra_err_50*float(scale_factor)
-		
+		for i in range(len(apogee_cluster_data)):
+			if cluster_ids[i] == 26:
+				PJ_26.append(i)
+			elif cluster_ids[i] == 95:
+				PJ_95.append(i)
+			elif cluster_ids[i] == 471:
+				PJ_471.append(i)
+			elif cluster_ids[i] == 162:
+				PJ_162.append(i)
+			elif cluster_ids[i] == 398:
+				PJ_398.append(i)
+			elif cluster_ids[i] == 151:
+				PJ_151.append(i)
+			elif cluster_ids[i] == 230:
+				PJ_230.append(i)
+			elif cluster_ids[i] == 939:
+				PJ_939.append(i)
+			elif cluster_ids[i] == 262:
+				PJ_262.append(i)
+			elif cluster_ids[i] == 289:
+				PJ_289.append(i)
+			elif cluster_ids[i] == 359:
+				PJ_359.append(i)
+			elif cluster_ids[i] == 396:
+				PJ_396.append(i)
+			elif cluster_ids[i] == 899:
+				PJ_899.append(i)
+			elif cluster_ids[i] == 189:
+				PJ_189.append(i)
+			elif cluster_ids[i] == 574:
+				PJ_574.append(i)
+			elif cluster_ids[i] == 641:
+				PJ_641.append(i)
+			elif cluster_ids[i] == 679:
+				PJ_679.append(i)
+			elif cluster_ids[i] == 1976:
+				PJ_1976.append(i)
+			elif cluster_ids[i] == 88:
+				PJ_88.append(i)
+			elif cluster_ids[i] == 1349:
+				PJ_1349.append(i)
+			elif cluster_ids[i] == 1811:
+				PJ_1811.append(i)
+				
+		cluster_dict = {'PJ_26': PJ_26, 'PJ_95': PJ_95, 'PJ_471': PJ_471, 'PJ_162': PJ_162, 'PJ_398': PJ_398, 'PJ_151': PJ_151,
+                'PJ_230': PJ_230, 'PJ_939': PJ_939, 'PJ_262': PJ_262, 'PJ_289': PJ_289, 'PJ_359': PJ_359,
+                'PJ_396': PJ_396, 'PJ_899': PJ_899, 'PJ_189': PJ_189, 'PJ_574': PJ_574, 'PJ_641': PJ_641,
+                'PJ_679': PJ_679, 'PJ_1976': PJ_1976, 'PJ_88': PJ_88, 'PJ_1349': PJ_1349, 'PJ_1811': PJ_1811}
+				
+		cluster_data = apogee_cluster_data[cluster_dict[name]]
+		cluster_spectra = spectra_50[cluster_dict[name]]
+		cluster_spectra_errs = spectra_err_50[cluster_dict[name]]
+		cluster_T = T[cluster_dict[name]]
+			
 		#Write to file
 		file = h5py.File(path, 'w')
-		file['apogee_cluster_data'] = apogee_cluster_data
-		file['spectra'] = spectra_50
-		file['spectra_errs'] = spectra_err_50
+		file['apogee_cluster_data'] = cluster_data
+		file['spectra'] = cluster_spectra
+		file['spectra_errs'] = cluster_spectra_errs
+		file['T'] = cluster_T
 		file['bitmask'] = full_bitmask
+		file['missing_spectra'] = missing_spectra
 		file.close()
 		print(name, 'complete')
 		
-	return apogee_cluster_data, spectra_50, spectra_err_50, good_T, full_bitmask
+	return cluster_data, cluster_spectra, cluster_spectra_errs, cluster_T, full_bitmask
 
 def weight_lsq(data, temp, error):
 	"""Return the quadratic fit parameters for a data set using the weighted least-squares method from Hogg 2015. 
@@ -253,7 +305,7 @@ def weight_lsq(data, temp, error):
 		plt.imshow(C)
 		plt.colorbar()
 		print(e)
-        
+
 def residuals(data, fit):
 	"""Return the residuals from a fit.
 	
@@ -278,18 +330,15 @@ def make_directory(name):
 	Parameters
 	----------
 	name : str
-		Name of desired cluster (i.e. 'NGC 2682') 
+		Name of desired cluster (i.e. 'PJ_26') 
 	"""
 	
-	#Strip spaces from cluster name
-	name_string = str(name).replace(' ', '')
-	
 	#If directory exists, do nothing
-	if glob.glob(name_string):
+	if glob.glob(name):
 		return None
 	#If directory does not exist, make new directory
 	else:
-		os.mkdir(name_string)
+		os.mkdir(name)
 
 def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
     """Return fit residuals from quadratic fit, spectral errors for desired element, fluxes for desired element,
@@ -357,16 +406,16 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
     #Get windows
     #window_file = pd.read_hdf('/Users/chloecheng/Personal/dr14_windows.hdf5', 'window_df') #Personal path
     window_file = pd.read_hdf('/geir_data/scr/ccheng/AST425/Personal/dr14_windows.hdf5', 'window_df') #Server path
-    dr14_elem_windows = window_file[elem].values
+    dr16_elem_windows = window_file[elem].values
     
     #change_dr('12') 
-    #Find the DR14 windows from the DR12 windows
+    #Find the DR16 windows from the DR12 windows
     #dr12_elem_windows = window.read(elem)
-    #change_dr('14')
-    #dr14_elem_windows = np.concatenate((dr12_elem_windows[246:3274], dr12_elem_windows[3585:6080], dr12_elem_windows[6344:8335]))
+    #change_dr('16')
+    #dr16_elem_windows = np.concatenate((dr12_elem_windows[246:3274], dr12_elem_windows[3585:6080], dr12_elem_windows[6344:8335]))
 
     #Get the indices of the lines 
-    ind = np.argwhere(dr14_elem_windows > 0)
+    ind = np.argwhere(dr16_elem_windows > 0)
     ind = ind.flatten()
 
     #Get the fluxes and errors from spectra
@@ -374,6 +423,7 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
     elem_points = np.zeros((len(ind), len_spectra))
     elem_err = np.zeros((len(ind), len_spectra))
     elem_err_200 = np.zeros((len(ind), len_spectra))
+
     for i in range(0, len(ind)):
         for j in range(0, len_spectra):
             elem_points[i][j] = spectra[j][i+ind[0]]
@@ -449,22 +499,19 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
         nanless_points = np.array(nanless_points)
 
         #Get the weights for later
-        weights = dr14_elem_windows[final_inds]
+        weights = dr16_elem_windows[final_inds]
         normed_weights = weights/np.sum(weights)
 
-    #File-saving 
     #If we are looking at the data
-    name_string = str(name).replace(' ', '')
     if sigma_val == None:
     		#Personal path
-            #path_dat = '/Users/chloecheng/Personal/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
+            #path_dat = '/Users/chloecheng/Personal/' + str(name) + '/' + str(name) + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
             #Server path
-            path_dat = '/geir_data/scr/ccheng/AST425/Personal/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
-            
-            #If the file exists, output the desired variables
+            path_dat = '/geir_data/scr/ccheng/AST425/Personal/' + str(name) + '/' + str(name) + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
+            #If the file exists, return variables
             if glob.glob(path_dat):
                 return elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights
-            #If the file does not exist, create file and output the desired variables
+            #If the file does not exist, create it, write to it, and return variables
             else:
                 file = h5py.File(path_dat, 'w')
                 file['residuals'] = elem_res
@@ -474,20 +521,19 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
                 file['c_param'] = elem_c
                 file.close()
                 return elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights
-    #If we are looking at simulations
+    #If we are looking at the simulations
     else:
         #Personal path
-        #path_sim = '/Users/chloecheng/Personal/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
+        #path_sim = '/Users/chloecheng/Personal/' + str(name) + '/' + str(name) + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
         #Server path
-        path_sim = '/geir_data/scr/ccheng/AST425/Personal/' + name_string  + '/' + name_string  + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
-        
-        #If the file exists, append to the file
+        path_sim = '/geir_data/scr/ccheng/AST425/Personal/' + str(name) + '/' + str(name) + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '.hdf5'
+        #If the file exists, append to it
         if glob.glob(path_sim):
             file = h5py.File(path_sim, 'a')
-            #If the group for the particular value of sigma exists, don't do anything
+            #If the simulation for this sigma has already been completed, do nothing
             if glob.glob(str(sigma_val)):
             	file.close()
-            #If not, append a new group to the file for the particular value of sigma
+            #If the simulation for this sigma has not been completed, write to file
             else:
             	grp = file.create_group(str(sigma_val))
             	grp['residuals'] = elem_res
@@ -496,7 +542,7 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
             	grp['b_param'] = elem_b
             	grp['c_param'] = elem_c
             	file.close()
-        #If the file does not exist, create a new file
+        #If the file does not exist, create it
         else:
             file = h5py.File(path_sim, 'w')
             grp = file.create_group(str(sigma_val))
@@ -511,6 +557,6 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, sigma_val=None):
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
-	apogee_cluster_data, spectra, spectra_errs, T, bitmask = get_spectra(arguments['--cluster'], arguments['--scale_factor'])
+	apogee_cluster_data, spectra, spectra_errs, T, bitmask = get_spectra(arguments['--cluster'])
 	cluster_dir = make_directory(arguments['--cluster'])
 	elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights = fit_func(arguments['--element'], arguments['--cluster'], spectra, spectra_errs, T, arguments['--type'])
