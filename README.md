@@ -21,8 +21,8 @@ the PJ scripts.
 ## Quick Start
 To run several simulations at once, run the homogeneity_algorithm.sh shell script.  To do this, run the following
 commands in terminal:
-```chmod 755 homogeneity_algorithm.sh
-./homogeneity_algorithm.sh```
+    chmod 755 homogeneity_algorithm.sh
+    ./homogeneity_algorithm.sh
 Three prompts will appear and you can fill them with the name of the cluster that is being examined, the number of 
 simulations to run, and whether or not red clump stars should be removed.  For example:
 > **Enter a cluster**:
