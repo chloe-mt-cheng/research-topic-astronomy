@@ -1,41 +1,45 @@
-"""Usage: ABC.py [-h][--cluster=<arg>][--scale_factor=<arg>][--sigma=<arg>]
+"""Usage: ABC.py [-h][--cluster=<arg>][--red_clump=<arg>][--sigma=<arg>]
 
 Examples:
 	Cluster name: e.g. input --cluster='NGC 2682'
-	Scale factor: e.g. input --scale_factor='1.4'
+	Red clump: e.g. input --red_clump='True'
 	Sigma choice: e.g. input --sigma=0.1
 
 -h  Help file
 --cluster=<arg>  Cluster name
---scale_factor=<arg> Error scaling factor
+--red_clump=<arg> Whether to exclude red clump stars in rcsample or not
 --sigma=<arg> Sigma value choice
 
 """
 
-#Import project scripts
+#Imports
+#project scripts
 import occam_clusters_input as oc
 import occam_clusters_post_process as pp
-#Import python modules
+#basic math and plotting
 import numpy as np
 from docopt import docopt
 from scipy.interpolate import interp1d
 import h5py
 import glob
-#Import apogee
+import os
+import time
+#apogee package
 from apogee.tools import toApStarGrid
 from apogee.tools import toAspcapGrid
-#Import psm
+#PSM code
 import psm
 
-def get_cluster_data(cluster, scale_factor=None):
+def get_cluster_data(cluster, red_clump):
     """Return the APOGEE data for the desired cluster.
     
     Parameters
     ----------
     cluster : str
     	Name of the desired cluster (e.g. 'NGC 2682')
-    scale_factor : float, optional
-    	Factor by which to scale spectral errors (default is None)
+    red_clump : bool
+		If the red clump stars in rcsample are to be removed, set to True.  If all stars are to be used,
+		set to False.
     
     Returns
     -------
@@ -57,122 +61,12 @@ def get_cluster_data(cluster, scale_factor=None):
 		in the APOGEE_PIXMASK bitmask
     """
     
-    apogee_cluster_data, spectra, spectra_errs, T, bitmask = oc.get_spectra(cluster, scale_factor)
+    apogee_cluster_data, spectra, spectra_errs, T, bitmask = oc.get_spectra(cluster, red_clump)
     num_elem = 15
     num_stars = len(spectra)
     return apogee_cluster_data, spectra, spectra_errs, T, num_elem, num_stars, bitmask
-
-def real_data(num_elem, cluster, spectra, spectra_errs, T):
-    """Return the fit residuals (with and without NaNs), errors (with and without NaNs), element weights, 
-    cumulative distributions, used and skipped elements, and number of elements for every element in the
-    desired cluster for the data.
     
-    Parameters
-    ----------
-    num_elem : int
-    	The number of elements in APOGEE
-    cluster : str
-    	The name of the desired cluster (e.g. 'NGC 2682'')
-    spectra : tuple
-    	Array of floats representing the spectra of the desired cluster
-    spectra_errs : tuple
-    	Array of floats representing the spectral uncertainties of the desired cluster
-    T : tuple
-    	Array of floats representing the effective temperature of each star in the cluster
-    	
-    Returns
-    -------
-    real_res : tuple
-    	Array of floats representing the residuals of the quadratic fit 
-    real_err : tuple
-    	Array of floats representing the spectral errors corresponding to the residuals
-    real_nanless_res : tuple
-    	Array of floats representing the residuals of the quadratic fit, with NaNs removed
-    real_nanless_err : tuple
-    	Array of floats representing the spectral errors corresponding to the residuals, with NaNs removed
-    real_weights : tuple
-    	Array of floats representing the weight of each elemental window
-    y_ax_real : tuple
-		One-dimensional array containing values from 0 to 1, the same size as cdist
-	real_cdists : tuple
-		One-dimensional array containing the sorted, normalized fit residuals
-	real_used_elems : tuple (may remove, don't think I use this)
-		Array of str representing the elements used in the cluster (some elements may be omitted due to 
-		lack of data)
-	real_skipped_elems : tuple (may remove, don't think I use this)
-    	Array of str representing the elements skipped due to lack of data 
-    new_num_elem : int
-    	The number of elements used, taking into account elements omitted due to lack of data
-    """
-    
-    #Fit function for every element (real)
-    elem_dict = {'element': ['C', 'N', 'O', 'NA', 'MG', 'AL', 'SI', 'S', 'K', 'CA', 'TI', 'V', 'MN', 'FE', 'NI']}
-    real_res = []
-    real_err = []
-    real_points = []
-    real_temp = []
-    real_a = []
-    real_b = []
-    real_c = []
-    real_nanless_res = []
-    real_nanless_err = []
-    real_nanless_T = []
-    real_nanless_points = []
-    real_weights = []
-    real_skipped_elems = []
-    real_used_elems = []
-    for i in range(len(elem_dict['element'])):
-        real_dat = oc.fit_func(elem_dict['element'][i], cluster, spectra, spectra_errs, T, dat_type = 'data', sigma_val=None)
-        #If the element has been omitted due to lack of data, skip it
-        if real_dat is None:
-            real_skipped_elems.append(elem_dict['element'][i])
-            continue
-        else:
-            real_used_elems.append(elem_dict['element'][i])
-            real_res.append(real_dat[0])
-            real_err.append(real_dat[1])
-            real_points.append(real_dat[2])
-            real_temp.append(real_dat[3])
-            real_a.append(real_dat[4])
-            real_b.append(real_dat[5])
-            real_c.append(real_dat[6])
-            real_nanless_res.append(real_dat[7])
-            real_nanless_err.append(real_dat[8])
-            real_nanless_T.append(real_dat[9])
-            real_nanless_points.append(real_dat[10])
-            real_weights.append(real_dat[11])
-
-    real_res = np.array(real_res)
-    real_err = np.array(real_err)
-    real_points = np.array(real_points)
-    real_temp = np.array(real_temp)
-    real_a = np.array(real_a)
-    real_b = np.array(real_b)
-    real_c = np.array(real_c)
-    real_nanless_res = np.array(real_nanless_res)
-    real_nanless_err = np.array(real_nanless_err)
-    real_nanless_T = np.array(real_nanless_T)
-    real_nanless_points = np.array(real_nanless_points)
-    real_weights = np.array(real_weights)
-
-    #Cumulative distributions
-    y_ax_real = []
-    real_cdists = []
-    cdist_dir = pp.make_directory_cdist(cluster)
-    
-    new_num_elem = len(real_used_elems)
-    for i in range(new_num_elem):
-        cum_dists = pp.cum_dist(cluster, real_used_elems[i], 'data', real_nanless_res[i], real_nanless_err[i])
-        y_ax_real.append(cum_dists[0])
-        real_cdists.append(cum_dists[1])
-    for i in range(new_num_elem):
-        y_ax_real[i] = np.array(y_ax_real[i])
-        real_cdists[i] = np.array(real_cdists[i])
-    y_ax_real = np.array(y_ax_real)
-    real_cdists = np.array(real_cdists)
-    return real_res, real_err, real_nanless_res, real_nanless_err, real_weights, y_ax_real, real_cdists, real_used_elems, real_skipped_elems, new_num_elem
-    
-def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectra, spectra_errs):
+def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectra, spectra_errs, run_number):
     """Return the residuals (with and without NaNs), errors (with and without NaNs), cumulative distributions,
     and skipped elements for the simulated spectra.
      
@@ -193,10 +87,12 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     	Array of floats representing the effective temperature of each star in the cluster
     cluster : str
     	Name of the desired cluster (e.g. 'NGC 2682')
-    pectra : tuple
+    spectra : tuple
     	Array of floats representing the spectra of the desired cluster
     spectra_errs : tuple
     	Array of floats representing the spectral uncertainties of the desired cluster
+    run_number : int
+		Number of the run by which to label files
     	
     Returns
     -------
@@ -216,6 +112,10 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
 		lack of data)
 	fake_skipped_elems : tuple (may remove, don't think I use this)
     	Array of str representing the elements skipped due to lack of data 
+    final_real_spectra : tuple
+    	Array of observed spectra masked in the same way as the simulated spectra 
+    final_real_spectra_err : tuple
+    	Array of observed spectral errors masked in the same way as the simulated spectra
     """
     
     #Abundances WRT H
@@ -285,19 +185,59 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
         for j in range(7514):
             if ~np.isnan(spectra[i][j]):
                 masked_psm[i][j] = cluster_padded_spec[i][j]
-
-    #Create fake noise to add to the psm 
-    cluster_fake_errs = np.zeros_like(spectra_errs)
-    for i in range(num_stars):
-        for j in range(7514):
-            #Maintain zero-padding in errors
-            if masked_psm[i][j] == 0.0:
-                cluster_fake_errs[i][j] = 0.0
-            else:
-                cluster_fake_errs[i][j] = np.random.normal(loc = 0.0, scale = spectra_errs[i][j])
-
+                
+    #Read in repeats residuals 
+    #file = h5py.File('/Users/chloecheng/Personal/repeats_dr14.hdf5', 'r') - REMOVE FOR FINAL VERSION
+    file = h5py.File('/geir_data/scr/ccheng/AST425/Personal/repeats_dr14.hdf5', 'r')
+    repeat_res = file['residuals'][()]
+    file.close()
+    
+    #Cut out gaps between detectors for DR14
+    repeats_dr14 = toAspcapGrid(repeat_res, dr='14')
+    #Calculate 6sigma for repeats
+    repeats_mean = np.nanmean(repeats_dr14)
+    repeats_std = np.nanstd(repeats_dr14)
+    repeats_6sigma = repeats_mean + repeats_std*6
+    			
+    #Create fake noise to add to the psm
+    selected_repeats = []
+    for i in range(0, num_stars): 
+    	#Select a random star from the repeats residuals by which to multiply the spectra errors
+    	random_repeat = np.random.choice(np.arange(0, len(repeats_dr14)))
+    	selected_repeats.append(repeats_dr14[random_repeat])
+    selected_repeats = np.array(selected_repeats)
+    
+    #Mask individual |repeats| that are > 6sigma
+    for i in range(len(selected_repeats)):
+    	for j in range(len(selected_repeats.T)):
+    		if np.abs(selected_repeats[i][j]) > repeats_6sigma:
+    			selected_repeats[i][j] = np.nan
+    
+    #Multiply the repeats by the spectral errors
+    cluster_fake_errs = spectra_errs*selected_repeats
+    #Pad the fake errors with zeroes in the same places as the PSM spectra
+    cluster_fake_errs[masked_psm == 0] = 0.0
+    
     #Add the noise to the psm 
-    final_fake_spec = masked_psm + cluster_fake_errs
+    noise_fake_spec = masked_psm + cluster_fake_errs
+    #Mask the real spectra and spectra errors in the same way as the fake spectra
+    masked_real_spectra = np.copy(spectra)
+    masked_real_spectra_err = np.copy(spectra_errs)
+    masked_real_spectra[np.isnan(noise_fake_spec)] = np.nan
+    masked_real_spectra_err[np.isnan(noise_fake_spec)] = np.nan
+    
+    #Remove empty spectra 
+    final_fake_spec = []
+    final_real_spectra = []
+    final_real_spectra_err = []
+    for i in range(len(noise_fake_spec)):
+    	if any(noise_fake_spec[i,:] != 0):
+    		final_fake_spec.append(noise_fake_spec[i])
+    		final_real_spectra.append(masked_real_spectra[i])
+    		final_real_spectra_err.append(masked_real_spectra_err[i])
+    final_fake_spec = np.array(final_fake_spec)
+    final_real_spectra = np.array(final_real_spectra)
+    final_real_spectra_err = np.array(final_real_spectra_err)
 
     #Run fitting function on synthetic spectra
     fake_res = []
@@ -314,7 +254,7 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     fake_skipped_elems = []
     fake_used_elems = []
     for i in range(len(elem_dict['element'])):
-        fake_dat = oc.fit_func(elem_dict['element'][i], cluster, final_fake_spec, spectra_errs, T, dat_type = 'sim', sigma_val=sigma)
+        fake_dat = oc.fit_func(elem_dict['element'][i], cluster, final_fake_spec, final_real_spectra_err, T, dat_type = 'sim', run_number = run_number, sigma_val=sigma)
         if fake_dat is None:
             fake_skipped_elems.append(elem_dict['element'][i])
             continue
@@ -347,10 +287,9 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     #Cumulative distributions
     y_ax_psm = []
     psm_cdists = []
-    cdist_dir = pp.make_directory_cdist(cluster)
     new_num_elem = len(fake_used_elems)
     for i in range(new_num_elem):
-        cum_dists = pp.cum_dist(cluster, fake_used_elems[i], 'sim', fake_nanless_res[i], fake_nanless_err[i])
+        cum_dists = pp.cum_dist(fake_nanless_res[i], fake_nanless_err[i])
         y_ax_psm.append(cum_dists[0])
         psm_cdists.append(cum_dists[1])
     for i in range(new_num_elem):
@@ -358,7 +297,119 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
         psm_cdists[i] = np.array(psm_cdists[i])
     y_ax_psm = np.array(y_ax_psm)
     psm_cdists = np.array(psm_cdists)
-    return fake_res, fake_err, y_ax_psm, psm_cdists, fake_nanless_res, fake_used_elems, fake_skipped_elems
+    	
+    return fake_res, fake_err, y_ax_psm, psm_cdists, fake_nanless_res, fake_used_elems, fake_skipped_elems, final_real_spectra, final_real_spectra_err
+    
+def real_data(num_elem, cluster, spectra, spectra_errs, T, run_number):
+    """Return the fit residuals (with and without NaNs), errors (with and without NaNs), element weights, 
+    cumulative distributions, used and skipped elements, and number of elements for every element in the
+    desired cluster for the data.
+    
+    Parameters
+    ----------
+    num_elem : int
+    	The number of elements in APOGEE
+    cluster : str
+    	The name of the desired cluster (e.g. 'NGC 2682'')
+    spectra : tuple
+    	Array of floats representing the spectra of the desired cluster
+    spectra_errs : tuple
+    	Array of floats representing the spectral uncertainties of the desired cluster
+    T : tuple
+    	Array of floats representing the effective temperature of each star in the cluster
+    run_number : int
+		Number of the run by which to label files
+    	
+    Returns
+    -------
+    real_res : tuple
+    	Array of floats representing the residuals of the quadratic fit 
+    real_err : tuple
+    	Array of floats representing the spectral errors corresponding to the residuals
+    real_nanless_res : tuple
+    	Array of floats representing the residuals of the quadratic fit, with NaNs removed
+    real_nanless_err : tuple
+    	Array of floats representing the spectral errors corresponding to the residuals, with NaNs removed
+    real_weights : tuple
+    	Array of floats representing the weight of each elemental window
+    y_ax_real : tuple
+		One-dimensional array containing values from 0 to 1, the same size as cdist
+	real_cdists : tuple
+		One-dimensional array containing the sorted, normalized fit residuals
+	real_used_elems : tuple (may remove, don't think I use this)
+		Array of str representing the elements used in the cluster (some elements may be omitted due to 
+		lack of data)
+	real_skipped_elems : tuple (may remove, don't think I use this)
+    	Array of str representing the elements skipped due to lack of data 
+    new_num_elem : int
+    	The number of elements used, taking into account elements omitted due to lack of data
+    """
+    
+    #Fit function for every element (real)
+    elem_dict = {'element': ['C', 'N', 'O', 'NA', 'MG', 'AL', 'SI', 'S', 'K', 'CA', 'TI', 'V', 'MN', 'FE', 'NI']}
+    real_res = []
+    real_err = []
+    real_points = []
+    real_temp = []
+    real_a = []
+    real_b = []
+    real_c = []
+    real_nanless_res = []
+    real_nanless_err = []
+    real_nanless_T = []
+    real_nanless_points = []
+    real_weights = []
+    real_skipped_elems = []
+    real_used_elems = []
+    for i in range(len(elem_dict['element'])):
+        real_dat = oc.fit_func(elem_dict['element'][i], cluster, spectra, spectra_errs, T, dat_type = 'data', run_number = run_number, sigma_val=None)
+        #If the element has been omitted due to lack of data, skip it
+        if real_dat is None:
+            real_skipped_elems.append(np.nan)
+            continue
+        else:
+            real_used_elems.append(elem_dict['element'][i])
+            real_skipped_elems.append(elem_dict['element'][i])
+            real_res.append(real_dat[0])
+            real_err.append(real_dat[1])
+            real_points.append(real_dat[2])
+            real_temp.append(real_dat[3])
+            real_a.append(real_dat[4])
+            real_b.append(real_dat[5])
+            real_c.append(real_dat[6])
+            real_nanless_res.append(real_dat[7])
+            real_nanless_err.append(real_dat[8])
+            real_nanless_T.append(real_dat[9])
+            real_nanless_points.append(real_dat[10])
+            real_weights.append(real_dat[11])
+
+    real_res = np.array(real_res)
+    real_err = np.array(real_err)
+    real_points = np.array(real_points)
+    real_temp = np.array(real_temp)
+    real_a = np.array(real_a)
+    real_b = np.array(real_b)
+    real_c = np.array(real_c)
+    real_nanless_res = np.array(real_nanless_res)
+    real_nanless_err = np.array(real_nanless_err)
+    real_nanless_T = np.array(real_nanless_T)
+    real_nanless_points = np.array(real_nanless_points)
+    real_weights = np.array(real_weights)
+
+    #Cumulative distributions
+    y_ax_real = []
+    real_cdists = []
+    new_num_elem = len(real_used_elems)
+    for i in range(new_num_elem):
+        cum_dists = pp.cum_dist(real_nanless_res[i], real_nanless_err[i])
+        y_ax_real.append(cum_dists[0])
+        real_cdists.append(cum_dists[1])
+    for i in range(new_num_elem):
+        y_ax_real[i] = np.array(y_ax_real[i])
+        real_cdists[i] = np.array(real_cdists[i])
+    y_ax_real = np.array(y_ax_real)
+    real_cdists = np.array(real_cdists)
+    return real_res, real_err, real_nanless_res, real_nanless_err, real_weights, y_ax_real, real_cdists, real_used_elems, real_skipped_elems, new_num_elem
 
 def cov_matrix(res, err, num_stars):
 	"""Return the covariance matrix of the normalized fit residuals.
@@ -430,7 +481,7 @@ def d_cov(weights, data_res, data_err, simulated_res, simulated_err, num_stars):
 	D_cov = np.sqrt(np.sum(stat))
 	return D_cov
 
-def d_cov_all(cluster, new_num_elem, weights, real_res, real_err, fake_res, fake_err, num_stars, sigma):
+def d_cov_all(cluster, new_num_elem, weights, real_res, real_err, fake_res, fake_err, num_stars, sigma, run_number):
 	"""Return the covariance matrix summary statistic for all APOGEE elements in the desired cluster.
 	
 	Parameters
@@ -457,6 +508,8 @@ def d_cov_all(cluster, new_num_elem, weights, real_res, real_err, fake_res, fake
 		Number of stars in desired cluster
 	sigma : float
 		Value of sigma used for the simulation
+	run_number : int
+		Number of the run by which to label files
 	
 	Returns
 	-------
@@ -470,8 +523,10 @@ def d_cov_all(cluster, new_num_elem, weights, real_res, real_err, fake_res, fake
 		
 	#Save data to file
 	name_string = str(cluster).replace(' ','') #Remove spaces from cluster name
-	#path = '/Users/chloecheng/Personal/' + name_string + '/' + name_string + '_' + 'D_cov' + '.hdf5' #Personal path
-	path = '/geir_data/scr/ccheng/AST425/Personal/' + name_string + '/' + name_string + '_' + 'D_cov' + '.hdf5' #Server path
+	timestr = time.strftime("%Y%m%d_%H%M%S")
+	pid = str(os.getpid())
+	#path = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Personal path - REMOVE FOR FINAL VERSION
+	path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
 	#If file exists, append to file
 	if glob.glob(path):
 		file = h5py.File(path, 'a')
@@ -499,6 +554,11 @@ def KS(data_yax, data_cdist, sim_yax, sim_cdist):
 		One-dimensional array containing values from 0 to 1, the same size as cdist, for the simulation
 	sim_cdist : tuple
 		One-dimensional array containing the sorted, normalized fit residuals for the simulation
+		
+	Returns
+	-------
+	dist : float
+		The KS distance between the simulation and the data
     """
     
     #Interpolate the cumulative distributions for subtraction
@@ -512,7 +572,7 @@ def KS(data_yax, data_cdist, sim_yax, sim_cdist):
     dist = np.max(np.abs(real_interp(xnew) - fake_interp(xnew)))
     return dist
 
-def KS_all(cluster, new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, sigma):
+def KS_all(cluster, new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, sigma, run_number):
     """Return the KS distance for all APOGEE elements in the desired cluster.
     
     Parameters
@@ -532,6 +592,13 @@ def KS_all(cluster, new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, 
     	One-dimensional array containing the sorted, normalized fit residuals for each element in the simulation
     sigma : float
     	The value of sigma used to create the simulation
+    run_number : int
+		Number of the run by which to label files
+		
+	Returns
+	-------
+	ks_all : tuple
+		Array of floats representing the KS distance summary statistic for every element in the cluster
     """
     
     ks_all = np.zeros(new_num_elem)
@@ -540,8 +607,10 @@ def KS_all(cluster, new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, 
     	
     #Save data to file
     name_string = str(cluster).replace(' ','') #Remove spaces from cluster name
-    #path = '/Users/chloecheng/Personal/' + name_string + '/' + name_string + '_' + 'KS' + '.hdf5' #Personal path
-    path = '/geir_data/scr/ccheng/AST425/Personal/' + name_string + '/' + name_string + '_' + 'KS' + '.hdf5' #Server path
+    timestr = time.strftime("%Y%m%d_%H%M%S")
+    pid = str(os.getpid())
+    #path = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Personal path - REMOVE FOR FINAL VERSION
+    path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
     #If file exists, append to file
     if glob.glob(path):
     	file = h5py.File(path, 'a')
@@ -559,8 +628,8 @@ def KS_all(cluster, new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, 
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
-	apogee_cluster_data, spectra, spectra_errs, T, num_elem, num_stars, bitmask = get_cluster_data(arguments['--cluster'], arguments['--scale_factor'])
-	real_res, real_err, real_nanless_res, real_nanless_err, real_weights, y_ax_real, real_cdists, real_used_elems, real_skipped_elems, new_num_elem = real_data(num_elem, arguments['--cluster'], spectra, spectra_errs, T)
-	fake_res, fake_err, y_ax_psm, psm_cdists, fake_nanless_res, fake_used_elems, fake_skipped_elems = psm_data(num_elem, num_stars, apogee_cluster_data, arguments['--sigma'], T, arguments['--cluster'], spectra, spectra_errs)
-	D_cov_all = d_cov_all(arguments['--cluster'], new_num_elem, real_weights, real_res, real_err, fake_res, fake_err, len(spectra), arguments['--sigma'])
-	ks_all = KS_all(arguments['--cluster'], new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, arguments['--sigma'])
+	apogee_cluster_data, spectra, spectra_errs, T, num_elem, num_stars, bitmask = get_cluster_data(arguments['--cluster'], arguments['--red_clump'])
+	fake_res, fake_err, y_ax_psm, psm_cdists, fake_nanless_res, fake_used_elems, fake_skipped_elems, final_real_spectra, final_real_spectra_err = psm_data(num_elem, num_stars, apogee_cluster_data, arguments['--sigma'], T, arguments['--cluster'], spectra, spectra_errs, run_number)
+	real_res, real_err, real_nanless_res, real_nanless_err, real_weights, y_ax_real, real_cdists, real_used_elems, real_skipped_elems, new_num_elem = real_data(num_elem, arguments['--cluster'], final_real_spectra, final_real_spectra_err, T, run_number)
+	D_cov_all = d_cov_all(arguments['--cluster'], new_num_elem, real_weights, real_res, real_err, fake_res, fake_err, len(spectra), arguments['--sigma'], run_number)
+	ks_all = KS_all(arguments['--cluster'], new_num_elem, y_ax_real, real_cdists, y_ax_psm, psm_cdists, arguments['--sigma'], run_number)
