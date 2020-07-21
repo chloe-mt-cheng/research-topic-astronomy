@@ -115,7 +115,7 @@ def get_spectra(name, red_clump):
 	
 	#If the data file for this cluster exists, save the data to variables
 	if glob.glob(path):
-		if red_clump == False:
+		if red_clump == 'False':
 			file = h5py.File(path, 'r')
 			cluster_data_full = file['apogee_cluster_data'][()]
 			cluster_spectra_full = file['spectra'][()]
@@ -126,7 +126,7 @@ def get_spectra(name, red_clump):
 			print(name, ' complete.')
 			return cluster_data_full, cluster_spectra_full, cluster_spectra_errs_full, cluster_T_full, full_bitmask
 		
-		else:
+		elif red_clump == 'True':
 			file = h5py.File(path, 'r')
 			cluster_data = file['apogee_cluster_data'][()]
 			cluster_spectra = file['spectra'][()]
@@ -340,7 +340,7 @@ def get_spectra(name, red_clump):
 		cluster_T = cluster_T_full[cluster_rgs]
 		bitmask_final = full_bitmask[rgs]
 		
-		if red_clump == False: 	
+		if red_clump == 'False': 	
 			#Write to file
 			file = h5py.File(path, 'w')
 			file['apogee_cluster_data'] = cluster_data_full
@@ -353,7 +353,7 @@ def get_spectra(name, red_clump):
 			
 			return cluster_data_full, cluster_spectra_full, cluster_spectra_errs_full, cluster_T_full, full_bitmask
 		
-		else:
+		elif red_clump == 'True':
 			#Write to file
 			file = h5py.File(path, 'w')
 			file['apogee_cluster_data'] = cluster_data

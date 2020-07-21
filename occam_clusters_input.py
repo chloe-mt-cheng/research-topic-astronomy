@@ -90,7 +90,7 @@ def get_spectra(name, red_clump):
 	----------
 	name : str
 		Name of desired cluster (i.e. 'NGC 2682') 
-	red_clump : bool
+	red_clump : str
 		If the red clump stars in rcsample are to be removed, set to True.  If all stars are to be used,
 		set to False.
 	
@@ -118,7 +118,7 @@ def get_spectra(name, red_clump):
 	
 	#If the data file for this cluster exists, save the data to variables
 	if glob.glob(path):
-		if red_clump == False:
+		if red_clump == 'False':
 			file = h5py.File(path, 'r')
 			apogee_cluster_data = file['apogee_cluster_data'][()]
 			spectra_50 = file['spectra'][()]
@@ -129,7 +129,7 @@ def get_spectra(name, red_clump):
 			print(name, ' complete.')
 			return apogee_cluster_data, spectra_50, spectra_err_50, good_T, full_bitmask
 		
-		else:
+		elif red_clump == 'True':
 			file = h5py.File(path, 'r')
 			apogee_cluster_data_final = file['apogee_cluster_data'][()]
 			spectra_final = file['spectra'][()]
@@ -275,7 +275,7 @@ def get_spectra(name, red_clump):
 		T_final = good_T[rgs]
 		bitmask_final = full_bitmask[rgs]
 		
-		if red_clump == False:
+		if red_clump == 'False':
 			#Write to file
 			file = h5py.File(path, 'w')
 			file['apogee_cluster_data'] = apogee_cluster_data
@@ -288,7 +288,7 @@ def get_spectra(name, red_clump):
 			
 			return apogee_cluster_data, spectra_50, spectra_err_50, good_T, full_bitmask
 		
-		else:
+		elif red_clump == 'True':
 			#Write to file 
 			file = h5py.File(path, 'w')
 			file['apogee_cluster_data'] = apogee_cluster_data_final

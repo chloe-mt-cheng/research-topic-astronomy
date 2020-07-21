@@ -37,7 +37,7 @@ def get_cluster_data(cluster, red_clump):
     ----------
     cluster : str
     	Name of the desired cluster (e.g. 'NGC 2682')
-    red_clump : bool
+    red_clump : str
 		If the red clump stars in rcsample are to be removed, set to True.  If all stars are to be used,
 		set to False.
     

@@ -35,7 +35,7 @@ def run_everything(cluster, num_sigma, red_clump, run_number):
 		Name of the desired cluster (e.g. 'NGC 2682')
 	num_sigma : int
 		Number of simulations to run 
-	red_clump : bool
+	red_clump : str
 		If the red clump stars in rcsample are to be removed, set to True.  If all stars are to be used,
 		set to False.
 	run_number : int
