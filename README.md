@@ -1,8 +1,5 @@
-# research-topic-astronomy
-
-Code from AST425: Research Topic in Astronomy course at University of Toronto, 2019-2020
-
-# Project: Testing the chemical homogeneity of open clusters
+# Testing the chemical homogeneity of open clusters: 
+## Code from AST425: Research Topic in Astronomy course at University of Toronto, 2019-2020
 
 This project consists of testing the chemical homogeneity of open clusters, helping to paint a clearer picture of the 
 early Galactic disc.  The goal of this work is to constrain the initial abundance scatter in open clusters, by 
