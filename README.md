@@ -58,7 +58,9 @@ because several different files are created for each of the simulations.  Once t
 is complete.
 
 Once the process is complete, run file_gathering.py in the directory where it is located as such:
+
 `python3 file_gathering.py --cluster='<cluster_name>'`
+
 This will write/append all of the individual files to a master file of each type, i.e. a file for all of the fitting
 information for the data, a file for all of the fitting information for the simulations, a file for all of the Dcov
 calculations, a file for all of the KS calculations, and a total file for the run, which contains the Dcov, KS, and 
