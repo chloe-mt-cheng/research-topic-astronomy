@@ -16,9 +16,8 @@ description of each script will be given in terms of the OCCAM scripts, but the 
 the PJ scripts.
 
 ## Quick Start
-If you're running a cluster for the first time, create the directories `run_files/<cluster_name>` and run the 
-run_code.py script first to create the HDF5 file containing the allStar information and the spectra.  To do this, run 
-the following command from terminal:
+If you're running a cluster for the first time, run the run_code.py script first to create the HDF5 file containing the
+allStar information and the spectra.  To do this, run the following command from terminal:
 
 `python3 run_code.py --cluster='<cluster_name>' --num_sigma='1' --red_clump=True --run_number='1'`
 
