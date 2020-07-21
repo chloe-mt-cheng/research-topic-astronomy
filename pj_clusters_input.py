@@ -113,31 +113,6 @@ def get_spectra(name, red_clump):
 	#path = '/Users/chloecheng/Personal/' + str(name) + '.hdf5' #Personal path - REMOVE FOR FINAL VERSION
 	path = '/geir_data/scr/ccheng/AST425/Personal/' + str(name) + '.hdf5' #Server path
 	
-	
-	#If the data file for this cluster exists, save the data to variables
-	if glob.glob(path):
-		if red_clump == False:
-			file = h5py.File(path, 'r')
-			apogee_cluster_data = file['apogee_cluster_data'][()]
-			spectra_50 = file['spectra'][()]
-			spectra_err_50 = file['spectra_errs'][()]
-			good_T = file['T'][()]
-			full_bitmask = file['bitmask'][()]
-			file.close()
-			print(name, ' complete.')
-			return apogee_cluster_data, spectra_50, spectra_err_50, good_T, full_bitmask
-		
-		else:
-			file = h5py.File(path, 'r')
-			apogee_cluster_data_final = file['apogee_cluster_data'][()]
-			spectra_final = file['spectra'][()]
-			spectra_err_final = file['spectra_errs'][()]
-			T_final = file['T'][()]
-			bitmask_final = file['bitmask'][()]
-			file.close()
-			print(name, ' complete.')
-			return apogee_cluster_data_final, spectra_final, spectra_err_final, T_final, bitmask_final
-	
 	#If the data file for this cluster exists, save the data to variables
 	if glob.glob(path):
 		if red_clump == False:
