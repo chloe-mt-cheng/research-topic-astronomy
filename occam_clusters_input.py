@@ -1,16 +1,18 @@
-"""Usage: occam_clusters_input.py [-h][--cluster=<arg>][--red_clump=<arg>][--element=<arg>][--type=<arg>]
+"""Usage: occam_clusters_input.py [-h][--cluster=<arg>][--red_clump=<arg>][--element=<arg>][--type=<arg>][--location=<arg>]
 
 Examples:
 	Cluster name: e.g. input --cluster='NGC 2682'
 	Red clump: e.g. input --red_clump='True'
 	Element name: e.g. input --element='AL'
 	Type: e.g. input --type='simulation'
+	Location: e.g. input --location='personal'
 
 -h  Help file
 --cluster=<arg>  Cluster name
 --red_clump=<arg> Whether to exclude red clump stars in rcsample or not
 --element=<arg>  Element name
 --type=<arg>  Data type 
+--location=<arg> Machine where the code is being run
 
 """
 
@@ -78,7 +80,7 @@ def photometric_Teff(apogee_cluster_data):
     
     return Teff
 
-def get_spectra(name, red_clump):
+def get_spectra(name, red_clump, location):
 	"""Return cluster data, spectra, spectral errors, photometric Teffs, and bitmask from APOGEE.
 	
 	If the data file for the specified cluster already exists locally, 
@@ -91,8 +93,10 @@ def get_spectra(name, red_clump):
 	name : str
 		Name of desired cluster (i.e. 'NGC 2682') 
 	red_clump : str
-		If the red clump stars in rcsample are to be removed, set to True.  If all stars are to be used,
-		set to False.
+		If the red clump stars in rcsample are to be removed, set to 'True'.  If all stars are to be used,
+		set to 'False'.
+	location : str
+		If running locally, set to 'personal'.  If running on the server, set to 'server'.
 	
 	Returns
 	-------
@@ -111,11 +115,12 @@ def get_spectra(name, red_clump):
 		in the APOGEE_PIXMASK bitmask
 	"""
 	
-	#Personal path, strip spaces in cluster name - REMOVE IN FINAL VERSION
-	#path = '/Users/chloecheng/Personal/' + str(name).replace(' ', '') + '.hdf5'
-	#Server path, strip spaces in cluster name 
-	path = '/geir_data/scr/ccheng/AST425/Personal/' + str(name).replace(' ', '') + '.hdf5' 
-	
+	#Path, strip spaces in cluster name
+	if location == 'personal':
+		path = '/Users/chloecheng/Personal/' + str(name).replace(' ', '') + '.hdf5'
+	elif location == 'server':
+		path = '/geir_data/scr/ccheng/AST425/Personal/' + str(name).replace(' ', '') + '.hdf5' 
+		
 	#If the data file for this cluster exists, save the data to variables
 	if glob.glob(path):
 		if red_clump == 'False':
@@ -390,7 +395,7 @@ def make_directory(name):
 	else:
 		os.mkdir(name_string)
 
-def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_val=None):
+def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, location, sigma_val=None):
     """Return fit residuals from quadratic fit, spectral errors for desired element, fluxes for desired element,
     an appropriately-sized array of effective temperatures, the quadratic fitting parameters, the residuals, 
     errors, temperatures, and fluxes with NaNs removed, and the normalized elemental weights.
@@ -419,6 +424,8 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     	Indicates whether the data being examined is the data or a simulation
      run_number : int
 		Number of the run by which to label files
+	location : str
+		If running locally, set to 'personal'.  If running on the server, set to 'server'.
     sigma_val : float, optional
     	Indicates the value of sigma being used for the simulation in question, if applicable (default is None)
 
@@ -470,7 +477,6 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     len_spectra = len(spectra)
     elem_points_12 = np.zeros((len(ind_12), len_spectra))
     elem_err_12 = np.zeros((len(ind_12), len_spectra))
-    elem_err_200_12 = np.zeros((len(ind_12), len_spectra))
     for i in range(0, len(ind_12)):
     	for j in range(0, len_spectra):
     		elem_points_12[i][j] = spectra[j][ind_12[i]]
@@ -495,8 +501,11 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     	sorted_dr12_weights = np.sort(dr12_weights)
     	
     	#Get windows
-    	#window_file = pd.read_hdf('/Users/chloecheng/Personal/dr14_windows.hdf5', 'window_df') #Personal path - REMOVE FOR FINAL VERSION
-    	window_file = pd.read_hdf('/geir_data/scr/ccheng/AST425/Personal/dr14_windows.hdf5', 'window_df') #Server path
+    	if location == 'personal':
+    		window_file = pd.read_hdf('/Users/chloecheng/Personal/dr14_windows.hdf5', 'window_df') 
+    	elif location == 'server':
+    		window_file = pd.read_hdf('/geir_data/scr/ccheng/AST425/Personal/dr14_windows.hdf5', 'window_df')
+    		
     	dr14_elem_windows_14 = window_file[elem].values
     	normalized_dr14_elem_windows_14 = (dr14_elem_windows_14 - np.min(dr14_elem_windows_14))/(np.max(dr14_elem_windows_14) - np.min(dr14_elem_windows_14))
     	
@@ -508,13 +517,24 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     	ind = ind.flatten()
     	
     	#Get the fluxes and errors from spectra
+    	#Limits of DR12 detectors
+    	dr12_d1_left = 322
+    	dr12_d1_right = 3242
+    	dr12_d2_left = 3648
+    	dr12_d2_right = 6048
+    	dr12_d3_left = 6412
+    	dr12_d3_right = 8306
+    	
     	elem_points = np.zeros((len(ind), len_spectra))
     	elem_err = np.zeros((len(ind), len_spectra))
-    	elem_err_200 = np.zeros((len(ind), len_spectra))
     	for i in range(0, len(ind)):
     		for j in range(0, len_spectra):
-    			elem_points[i][j] = spectra[j][ind[i]]
-    			elem_err[i][j] = spectra_errs[j][ind[i]] #APOGEE measured errors
+    			if ind[i] < dr12_d1_left or (dr12_d1_right < ind[i] < dr12_d2_left) or (dr12_d2_right < ind[i] < dr12_d3_left) or ind[i] > dr12_d3_right:
+    				elem_points[i][j] = np.nan
+    				elem_err[i][j] = np.nan
+    			else:
+    				elem_points[i][j] = spectra[j][ind[i]]
+    				elem_err[i][j] = spectra_errs[j][ind[i]] #APOGEE measured errors
     	
     	#Use only pixels with more than 5 points
     	final_points = []
@@ -594,10 +614,10 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     		name_string = str(name).replace(' ', '')
     		pid = str(os.getpid())
     		if sigma_val == None:
-    			#Personal path - REMOVE FOR FINAL VERSION
-    			#path_dat = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
-    			#Server path
-    			path_dat = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    			if location == 'personal':
+    				path_dat = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    			elif location == 'server':
+    				path_dat = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     	
     			#If the file exists, output the desired variables
     			if glob.glob(path_dat):
@@ -615,10 +635,10 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
     				return elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights
     		#If we are looking at simulations
     		else:
-    			#Personal path - REMOVE FOR FINAL VERSION
-    			#path_sim = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
-    			#Server path
-    			path_sim = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string  + '/' + name_string  + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    			if location == 'personal':
+    				path_sim = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    			elif location == 'server':
+    				path_sim = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string  + '/' + name_string  + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     	
     			#If the file exists, append to the file
     			if glob.glob(path_sim):
@@ -652,6 +672,6 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, sigma_v
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
-	apogee_cluster_data, spectra, spectra_errs, T, bitmask = get_spectra(arguments['--cluster'], arguments['--red_clump'])
+	apogee_cluster_data, spectra, spectra_errs, T, bitmask = get_spectra(arguments['--cluster'], arguments['--red_clump'], arguments['--location'])
 	cluster_dir = make_directory(arguments['--cluster'])
-	elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights = fit_func(arguments['--element'], arguments['--cluster'], spectra, spectra_errs, T, arguments['--type'], run_number, sigma_val)
+	elem_res, final_err, final_points, temp_array, elem_a, elem_b, elem_c, nanless_res, nanless_err, nanless_T, nanless_points, normed_weights = fit_func(arguments['--element'], arguments['--cluster'], spectra, spectra_errs, T, arguments['--type'], run_number, arguments['--location'], sigma_val)
