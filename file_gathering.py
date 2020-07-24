@@ -1,10 +1,14 @@
-"""Usage: file_gathering.py [-h][--cluster=<arg>]
+"""Usage: file_gathering.py [-h][--cluster=<arg>][--location=<arg>][--elem=<arg>]
 
 Examples:
 	Cluster name: e.g. input --cluster='NGC 2682'
+	Location: e.g. input --location='personal'
+	Element: e.g. input --elem='AL'
 	
 -h  Help file
 --cluster=<arg>  Cluster name
+--location=<arg> Machine where the code is being run
+--elem=<arg> Element name
 
 """
 
@@ -17,7 +21,7 @@ import time
 import glob
 import shutil
 
-def gather_files(name):
+def gather_files(name, location, elem):
     """Concatenate all generated files during parallel run into their respective files.  
     Append to existing files or write files if they don't exist.
     
@@ -25,6 +29,8 @@ def gather_files(name):
     ----------
     name : str
         Name of desired cluster (e.g. 'NGC2682')
+    location : str
+    	If running locally, set to 'personal'.  If running on the server, set to 'server'.
     
     Returns
     -------
@@ -34,12 +40,12 @@ def gather_files(name):
     cluster = str(name)
     timestr = time.strftime("%Y%m%d_%H%M%S")
     elem_dict = {'element': ['C', 'N', 'O', 'NA', 'MG', 'AL', 'SI', 'S', 'K', 'CA', 'TI', 'V', 'MN', 'FE', 'NI']}
-    #Path to directory created during run
-    #path = '/Users/chloecheng/Personal/run_files/' + cluster + '/' - REMOVE FOR FINAL VERSION
-    path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + cluster + '/'
-    #Path to main cluster directory
-    #outerpath = '/Users/chloecheng/Personal/' + cluster + '/' - REMOVE FOR FINAL VERSION
-    outerpath = '/geir_data/scr/ccheng/AST425/Personal/' + cluster + '/'
+    if location == 'personal':
+    	path = '/Users/chloecheng/Personal/run_files/' + cluster + '/' #Path to directory created during run
+    	outerpath = '/Users/chloecheng/Personal/' + cluster + '/' #Path to main cluster directory
+    elif location == 'server':
+    	path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + cluster + '/' #Path to directory created during run
+    	outerpath = '/geir_data/scr/ccheng/AST425/Personal/' + cluster + '/' #Path to main cluster directory
     
     #Get all file names and sort
     files = os.listdir(path)
@@ -92,7 +98,7 @@ def gather_files(name):
     all_sigma = np.concatenate((sigma))
 
     #Write a file for the run
-    full_algorithm_file = h5py.File(outerpath + cluster + '_' + timestr + '.hdf5', 'w')
+    full_algorithm_file = h5py.File(outerpath + cluster + '_' + elem + '_' + timestr + '.hdf5', 'w')
     full_algorithm_file['D_cov'] = all_D_cov
     full_algorithm_file['KS'] = all_KS
     full_algorithm_file['sigma'] = all_sigma
@@ -150,8 +156,8 @@ def gather_files(name):
         dcov_keys.append(list(open_dcov.keys()))
         for j in dcov_keys[i]:
             #If the data file exists in the main directory, append to it
-            if glob.glob(outerpath + cluster + '_' + 'D_cov.hdf5'):
-                open_exist_dcov = h5py.File(outerpath + cluster + '_' + 'D_cov.hdf5', 'a')
+            if glob.glob(outerpath + cluster + '_' + elem + '_' + 'D_cov.hdf5'):
+                open_exist_dcov = h5py.File(outerpath + cluster + '_' + elem + '_' + 'D_cov.hdf5', 'a')
                 #If the group for the particular generated value of sigma doesn't exist, copy the data to the file
                 if not j in list(open_exist_dcov.keys()):
                     open_dcov.copy(j, open_exist_dcov)
@@ -161,7 +167,7 @@ def gather_files(name):
                 open_exist_dcov.close()
             #If the file doesn't exist, write one
             else:
-                open_exist_dcov = h5py.File(outerpath + cluster + '_' + 'D_cov.hdf5', 'w')
+                open_exist_dcov = h5py.File(outerpath + cluster + '_' + elem + '_' + 'D_cov.hdf5', 'w')
                 open_dcov.copy(j, open_exist_dcov)
                 open_exist_dcov.close()
         open_dcov.close()
@@ -179,8 +185,8 @@ def gather_files(name):
         ks_keys.append(list(open_ks.keys()))
         for j in ks_keys[i]:
             #If the data file exists in the main directory, append to it
-            if glob.glob(outerpath + cluster + '_' + 'KS.hdf5'):
-                open_exist_ks = h5py.File(outerpath + cluster + '_' + 'KS.hdf5', 'a')
+            if glob.glob(outerpath + cluster + '_' + elem  + '_' + 'KS.hdf5'):
+                open_exist_ks = h5py.File(outerpath + cluster + '_' + elem + '_' + 'KS.hdf5', 'a')
                 #If the group for the particular generated value of sigma doesn't exist, copy the data to the file
                 if not j in list(open_exist_ks.keys()):
                     open_ks.copy(j, open_exist_ks)
@@ -190,7 +196,7 @@ def gather_files(name):
                 open_exist_ks.close()
             #If the file doesn't exist, write one
             else:
-                open_exist_ks = h5py.File(outerpath + cluster + '_' + 'KS.hdf5', 'w')
+                open_exist_ks = h5py.File(outerpath + cluster + '_' + elem + '_' + 'KS.hdf5', 'w')
                 open_ks.copy(j, open_exist_ks)
                 open_exist_ks.close()
         open_ks.close()
@@ -202,7 +208,7 @@ def gather_files(name):
     #***********************************************
     #*  GATHER SIMULATION FITS AND RESIDUALS FILES *
     #***********************************************
-    #Gather filenames (complicated because there are three copies of each with different PIDs)
+    #Gather filenames (complicated because there are ten copies of each with different PIDs)
     split_res_sim_files = []
     for i in res_sim_files:
         split_res_sim_files.append(i.split('_'))
@@ -264,10 +270,12 @@ def gather_files(name):
         os.remove(path + file)
         
     #Delete the directory
-    #shutil.rmtree('/Users/chloecheng/Personal/run_files/') - REMOVE IN FINAL VERSION 
-    shutil.rmtree('/geir_data/scr/ccheng/AST425/Personal/run_files/')
+    if location == 'personal':
+    	shutil.rmtree('/Users/chloecheng/Personal/run_files/')
+    elif location == 'server':
+    	shutil.rmtree('/geir_data/scr/ccheng/AST425/Personal/run_files/')
 
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	
-	files = gather_files(arguments['--cluster'])
+	files = gather_files(arguments['--cluster'], arguments['--location'], arguments['--elem'])
