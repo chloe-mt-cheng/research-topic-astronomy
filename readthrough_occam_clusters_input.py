@@ -476,9 +476,9 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, locatio
     
     #Get the indices of the lines 
     ind_12 = np.argwhere(normalized_dr14_elem_windows_12 > 0) ###Get the indices of all of the pixels of the absorption lines of the element in question
-    ind_12 = ind_12.flatten() ###Get rid of the extra dimension produced by np.argwhere - might be able to streamline this by getting rid of argwhere
+    ind_12 = ind_12.flatten() ###Get rid of the extra dimension produced by np.argwhere
     
-    #Get the fluxes and errors from spectra ###I probably don't need to do this part, I only really need the final indices for pixels with more than 5 points to cut out 70% of the dr12 windows from dr14 after the next if else statement - need points for >= 5 part, but don't need errors
+    #Get the fluxes and errors from spectra 
     len_spectra = len(spectra) ###Number of stars
     elem_points_12 = np.zeros((len(ind_12), len_spectra)) ###Array for values of the points in the spectra that are at the indices of the elemental lines in DR12
     elem_err_12 = np.zeros((len(ind_12), len_spectra)) ###Array for values of the errors in the spectra that are at the indices of the elemental lines in DR12 
