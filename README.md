@@ -19,7 +19,7 @@ the PJ scripts.
 If you're running a cluster for the first time, run the run_code.py script first to create the HDF5 file containing the
 allStar information and the spectra.  To do this, run the following command from terminal:
 
-`python3 run_code.py --cluster='<cluster_name>' --num_sigma='1' --red_clump=True --run_number='1'`
+`python3 run_code.py --cluster='<cluster_name>' --num_sigma='1' --red_clump=True --run_number='1' --location='server' --elem='<element_name>'`
 
 where you can enter True or False depending on whether you would like to remove the red clump stars or not.  Then, 
 proceed with the following instructions.  If you have run the cluster previously, you can skip this step and proceed
@@ -47,6 +47,14 @@ simulations to run, and whether or not red clump stars should be removed.  For e
 
 > True
 
+> **Enter the run location:**
+
+> server
+
+> **Enter an element:**
+
+> FE
+
 In this example, the script will proceed to run 200 simulations 10 times, for a total of 2000 simulations.  This script
 runs the simulations in the background so that many simulations can be run in a shorter amount of time.  
 
@@ -58,7 +66,7 @@ is complete.
 
 Once the process is complete, run file_gathering.py in the directory where it is located as such:
 
-`python3 file_gathering.py --cluster='<cluster_name>'`
+`python3 file_gathering.py --cluster='<cluster_name>' --location='server' --elem='<element_name>'`
 
 This will write/append all of the individual files to a master file of each type, i.e. a file for all of the fitting
 information for the data, a file for all of the fitting information for the simulations, a file for all of the Dcov
@@ -69,7 +77,7 @@ This last file is the crucial one for running the ABC algorithm later and has th
 `clustername_date_time.hdf5`.  You can feed the quantities in this file into the `ABC()` function in the limits.py
 script to obtain the upper limits on the intrinsic abundance scatter for that particular cluster.
 
-## Description of Scripts
+## Description of Scripts - To be updated 
 OCCAM Scripts:
 1. run_code.py: This script contains a function that runs the entire algorithm for the desired number of sigma.  It 
 calls on the functions in all of the other project scripts, directly or indirectly.  It reads in the allStar information
