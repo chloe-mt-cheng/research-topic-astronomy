@@ -85,14 +85,6 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem): #
         fake_nanless_res.append(fake_dat[4]) ###Get the fake residuals with no NaNs
         final_real_spectra.append(fake_dat[5]) ###Get the observed spectra that are masked in the same way as the fake spectra
         final_real_spectra_err.append(fake_dat[6]) ###Get the observed spectral errors that are masked in the same way as the fake spectra
-
-    fake_res = np.array(fake_res) ###Make into array
-    fake_err = np.array(fake_err) ###Make into array
-    y_ax_psm = np.array(y_ax_psm) ###Make into array
-    psm_cdists = np.array(psm_cdists) ###Make into array
-    fake_nanless_res = np.array(fake_nanless_res) ###Make into array
-    final_real_spectra = np.array(final_real_spectra) ###Make into array
-    final_real_spectra_err = np.array(final_real_spectra_err) ###Make into array
     
     #Fit the data
     real_res = [] ###Empty list for the real residuals
@@ -109,12 +101,6 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem): #
         real_nanless_err.append(real_dat[8]) ###Get the real errors with no NaNs
         real_weights.append(real_dat[11]) ###Get the weights of the windows for the element
 
-    all_real_res = np.array(real_res) ###Make into array
-    all_real_err = np.array(real_err) ###Make into array
-    all_real_nanless_res = np.array(real_nanless_res) ###Make into array
-    all_real_nanless_err = np.array(real_nanless_err) ###Make into array
-    all_real_weights = np.array(real_weights) ###Make into array
-
     #Get the cumulative distributions for the data
     y_ax_real = [] ###Empty list for y-axis for real cumulative distributions
     real_cdists = [] ###Empty list for real cumulative distributions
@@ -122,17 +108,17 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem): #
         real_cdist_dat = pp.cum_dist(all_real_nanless_res[i], all_real_nanless_err[i]) ###Compute the cumulative distributions using the cum_dist function from occam_clusters_post_process.py
         y_ax_real.append(real_cdist_dat[0]) ###Get the y-axes for the real cumulative distributions
         real_cdists.append(real_cdist_dat[1]) ###Get the real cumulative distributions
-    all_y_ax_real = np.array(y_ax_real) ###Make into array
-    all_real_cdists = np.array(real_cdists) ###Make into array
     
     #Calculate summary statistics
     D_cov_all = [] ###Empty list for the delta covariance statistics
     ks_all = [] ###Empty list for the KS distance statistics
     for i in range(len(sigma_vals)): ###Iterate through the simulations
     	###Compute the delta covariance statistics
-        D_cov_all.append(ABC.d_cov(cluster, all_real_weights[i], all_real_res[i], all_real_err[i], fake_res[i], fake_err[i], num_stars, sigma_vals[i], elem, location, run_number))
+        D_cov_all.append(ABC.d_cov(cluster, real_weights[i], real_res[i], real_err[i], fake_res[i], fake_err[i], num_stars, sigma_vals[i], elem, location, run_number))
         ###Compute the KS distance statistics
-        ks_all.append(ABC.KS(cluster, all_y_ax_real[i], all_real_cdists[i], y_ax_psm[i], psm_cdists[i], sigma_vals[i], elem, location, run_number))
+        ks_all.append(ABC.KS(cluster, y_ax_real[i], real_cdists[i], y_ax_psm[i], psm_cdists[i], sigma_vals[i], elem, location, run_number))
+    D_cov_all = np.array(D_cov_all) ###Make into array
+    ks_all = np.array(ks_all) ###Make into array 
 
     #Write to file
     timestr = time.strftime("%Y%m%d_%H%M%S") #Date and time by which to identify file
