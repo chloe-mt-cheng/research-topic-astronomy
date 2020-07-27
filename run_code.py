@@ -83,14 +83,6 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem):
         fake_nanless_res.append(fake_dat[4])
         final_real_spectra.append(fake_dat[5])
         final_real_spectra_err.append(fake_dat[6])
-
-    fake_res = np.array(fake_res)
-    fake_err = np.array(fake_err)
-    y_ax_psm = np.array(y_ax_psm)
-    psm_cdists = np.array(psm_cdists)
-    fake_nanless_res = np.array(fake_nanless_res)
-    final_real_spectra = np.array(final_real_spectra)
-    final_real_spectra_err = np.array(final_real_spectra_err)
     
     #Fit the data
     real_res = []
@@ -106,28 +98,22 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem):
         real_nanless_err.append(real_dat[8])
         real_weights.append(real_dat[11])
 
-    all_real_res = np.array(real_res)
-    all_real_err = np.array(real_err)
-    all_real_nanless_res = np.array(real_nanless_res)
-    all_real_nanless_err = np.array(real_nanless_err)
-    all_real_weights = np.array(real_weights)
-
     #Get the cumulative distributions for the data
     y_ax_real = [] 
     real_cdists = [] 
     for i in range(len(sigma_vals)):
-        real_cdist_dat = pp.cum_dist(all_real_nanless_res[i], all_real_nanless_err[i])
+        real_cdist_dat = pp.cum_dist(real_nanless_res[i], real_nanless_err[i])
         y_ax_real.append(real_cdist_dat[0])
         real_cdists.append(real_cdist_dat[1])
-    all_y_ax_real = np.array(y_ax_real)
-    all_real_cdists = np.array(real_cdists)
     
     #Calculate summary statistics
     D_cov_all = []
     ks_all = []
     for i in range(len(sigma_vals)):
-        D_cov_all.append(ABC.d_cov(cluster, all_real_weights[i], all_real_res[i], all_real_err[i], fake_res[i], fake_err[i], num_stars, sigma_vals[i], elem, location, run_number))
-        ks_all.append(ABC.KS(cluster, all_y_ax_real[i], all_real_cdists[i], y_ax_psm[i], psm_cdists[i], sigma_vals[i], elem, location, run_number))
+        D_cov_all.append(ABC.d_cov(cluster, real_weights[i], real_res[i], real_err[i], fake_res[i], fake_err[i], num_stars, sigma_vals[i], elem, location, run_number))
+        ks_all.append(ABC.KS(cluster, y_ax_real[i], real_cdists[i], y_ax_psm[i], psm_cdists[i], sigma_vals[i], elem, location, run_number))
+    D_cov_all = np.array(D_cov_all)
+    ks_all = np.array(ks_all)
 
     #Write to file
     timestr = time.strftime("%Y%m%d_%H%M%S") #Date and time by which to identify file
