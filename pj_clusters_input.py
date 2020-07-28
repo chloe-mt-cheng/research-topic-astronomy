@@ -23,6 +23,7 @@ from apogee.tools.path import change_dr
 from apogee.spec import window
 from apogee.tools.read import rcsample
 change_dr('14') #use DR14
+from apogee.tools import apStarInds
 #astropy helper functions
 import astropy.io.fits as afits
 #basic math and plotting
@@ -584,12 +585,12 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, locatio
     	
     	#Get the fluxes and errors from spectra
     	#Limits of DR12 detectors
-    	dr12_d1_left = 322
-    	dr12_d1_right = 3242
-    	dr12_d2_left = 3648
-    	dr12_d2_right = 6048
-    	dr12_d3_left = 6412
-    	dr12_d3_right = 8306
+    	dr12_d1_left = apStarInds['12']['blue'][0]
+    	dr12_d1_right = apStarInds['12']['blue'][-1]
+    	dr12_d2_left = apStarInds['12']['green'][0]
+    	dr12_d2_right = apStarInds['12']['green'][-1]
+    	dr12_d3_left = apStarInds['12']['red'][0]
+    	dr12_d3_right = apStarInds['12']['red'][-1]
     	
     	elem_points = np.zeros((len(ind), len_spectra))
     	elem_err = np.zeros((len(ind), len_spectra))
