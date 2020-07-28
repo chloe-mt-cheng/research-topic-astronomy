@@ -185,7 +185,7 @@ def get_spectra(name, red_clump, location):
 		cluster_marked = np.copy(cluster_stars)
 		for i in range(len(cluster_stars)):
 			for j in range(len(rc_stars)):
-				if cluster_stars[i] in rc_stars[j]:
+				if cluster_stars[i] == rc_stars[j]:
 					cluster_marked[i] = np.nan
 		
 		#Get spectra, spectral errors, and bitmask for each star - apStar
