@@ -189,7 +189,7 @@ def get_spectra(name, red_clump, location):
 		PJ_marked = np.copy(PJ_stars)
 		for i in range(len(PJ_stars)):
 			for j in range(len(rc_stars)):
-				if PJ_stars[i] in rc_stars[j]:
+				if PJ_stars[i] == rc_stars[j]:
 					PJ_marked[i] = np.nan
 		
 		#Set all entries in bitmask to integers	
