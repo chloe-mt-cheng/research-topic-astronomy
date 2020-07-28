@@ -96,8 +96,11 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     fe_abundance_dict = {'element': ['C_FE', 'N_FE', 'O_FE', 'NA_FE', 'MG_FE', 'AL_FE', 'SI_FE', 'S_FE', 'K_FE', 'CA_FE', 'TI_FE', 'V_FE', 'MN_FE', 'NI_FE', 'FE_H']}
     cluster_xh = np.zeros((num_elem, num_stars))
     for i in range(num_elem):
-        for j in range(num_stars):
-            cluster_xh[i] = apogee_cluster_data[fe_abundance_dict['element'][i]]*apogee_cluster_data['FE_H']
+    	for j in range(num_stars):
+    		if fe_abundance_dict['element'][i] == 'FE_H':
+    			cluster_xh[i] = apogee_cluster_data['FE_H']
+    		else:
+    			cluster_xh[i] = apogee_cluster_data[fe_abundance_dict['element'][i]] + apogee_cluster_data['FE_H']
     cluster_avg_abundance = np.mean(cluster_xh, axis=1)
     
     cluster_logg = apogee_cluster_data['LOGG']
@@ -166,7 +169,8 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     #Calculate 6sigma for repeats
     repeats_mean = np.nanmean(repeats_dr14)
     repeats_std = np.nanstd(repeats_dr14)
-    repeats_6sigma = repeats_mean + repeats_std*6
+    repeats_6sigma_pos = repeats_mean + repeats_std*6
+    repeats_6sigma_neg = repeats_mean - repeats_std*6
 
     #Create fake noise to add to the psm
     selected_repeats = []
@@ -178,9 +182,9 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
 
     #Mask individual |repeats| that are > 6sigma
     for i in range(len(selected_repeats)):
-        for j in range(len(selected_repeats.T)):
-            if np.abs(selected_repeats[i][j]) > repeats_6sigma:
-                selected_repeats[i][j] = np.nan
+    	for j in range(len(selected_repeats.T)):
+    		if (selected_repeats[i][j] > repeats_6sigma_pos) and (selected_repeats[i][j] < repeats_6sigma_neg):
+    			selected_repeats[i][j] = np.nan
 
     #Multiply the repeats by the spectral errors
     cluster_fake_errs = spectra_errs*selected_repeats
