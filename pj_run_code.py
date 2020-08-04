@@ -37,7 +37,7 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem):
     Parameters
     ----------
     cluster : str
-        Name of the desired cluster (e.g. 'PJ_26')
+        Name of the desired cluster (e.g. 'NGC 2682')
     num_sigma : int
         Number of simulations to run 
     red_clump : str
@@ -120,9 +120,9 @@ def run_everything(cluster, num_sigma, red_clump, run_number, location, elem):
     name_string = str(cluster).replace(' ','') #Remove spaces from name of cluster
     pid = str(os.getpid())
     if location == 'personal':
-        path = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + elem + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+        path = '/Users/chloecheng/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + elem + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     elif location == 'server':
-        path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + elem + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
+        path = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + elem + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
     file = h5py.File(path, 'w')
     file['D_cov'] = D_cov_all
     file['KS'] = ks_all
