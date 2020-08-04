@@ -31,6 +31,7 @@ import time
 #apogee package
 from apogee.tools import toApStarGrid
 from apogee.tools import toAspcapGrid
+from apogee.tools import apStarInds
 #PSM code
 import psm
 
@@ -142,8 +143,21 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
                                                    feh = cluster_fake_abundance[elem_number_dict['FE']][i], 
                                                    c12c13 = psm.c12c13)
 
-    #Pad psm spectra with zeros to make appropriate size for DR14
+    
+    #Mask spectra outside of boundaries of DR12 detectors
     apStar_cluster_gen_spec = toApStarGrid(cluster_gen_spec, dr='12')
+    dr12_d1_left = apStarInds['12']['blue'][0]
+    dr12_d1_right = apStarInds['12']['blue'][-1]
+    dr12_d2_left = apStarInds['12']['green'][0]
+    dr12_d2_right = apStarInds['12']['green'][-1]
+    dr12_d3_left = apStarInds['12']['red'][0]
+    dr12_d3_right = apStarInds['12']['red'][-1]
+    for i in range(len(apStar_cluster_gen_spec)):
+    	for j in range(len(apStar_cluster_gen_spec.T)):
+    		if j < dr12_d1_left or (dr12_d1_right < j < dr12_d2_left) or (dr12_d2_right < j < dr12_d3_left) or j > dr12_d3_right:
+    			apStar_cluster_gen_spec[i][j] = np.nan
+    
+    #Pad psm spectra with zeros to make appropriate size for DR14
     cluster_padded_spec = toAspcapGrid(apStar_cluster_gen_spec, dr='14')
 
     #Create array of nans to mask the psm in the same way as the spectra
@@ -183,12 +197,13 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     #Mask individual |repeats| that are > 6sigma
     for i in range(len(selected_repeats)):
     	for j in range(len(selected_repeats.T)):
-    		if (selected_repeats[i][j] > repeats_6sigma_pos) and (selected_repeats[i][j] < repeats_6sigma_neg):
+    		if (selected_repeats[i][j] > repeats_6sigma_pos) or (selected_repeats[i][j] < repeats_6sigma_neg):
+    		#if np.abs(selected_repeats[i][j]) > repeats_6sigma_pos:
     			selected_repeats[i][j] = np.nan
 
     #Multiply the repeats by the spectral errors
     cluster_fake_errs = spectra_errs*selected_repeats
-    #Pad the fake errors with zeroes in the same places as the PSM spectra
+    #Correct the fake errors with zeroes in the same places as the PSM spectra
     cluster_fake_errs[masked_psm == 0] = 0.0
 
     #Add the noise to the psm 
@@ -199,7 +214,7 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     masked_real_spectra[np.isnan(noise_fake_spec)] = np.nan
     masked_real_spectra_err[np.isnan(noise_fake_spec)] = np.nan
 
-    #Remove empty spectra 
+    #Remove empty spectra - assertion
     final_fake_spec = []
     final_real_spectra = []
     final_real_spectra_err = []
@@ -218,7 +233,7 @@ def psm_data(num_elem, num_stars, apogee_cluster_data, sigma, T, cluster, spectr
     #Cumulative distributions
     y_ax_psm, psm_cdists  = pp.cum_dist(fake_nanless_res, fake_nanless_err)
     return fake_res, fake_err, y_ax_psm, psm_cdists, fake_nanless_res, final_real_spectra, final_real_spectra_err
-    
+
 def cov_matrix(res, err, num_stars):
 	"""Return the covariance matrix of the normalized fit residuals.
 	
@@ -303,9 +318,9 @@ def d_cov(cluster, weights, data_res, data_err, simulated_res, simulated_err, nu
 	timestr = time.strftime("%Y%m%d_%H%M%S")
 	pid = str(os.getpid())
 	if location == 'personal':
-		path = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
+		path = '/Users/chloecheng/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
 	elif location == 'server':
-		path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
+		path = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'D_cov' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' #Server path
 	#If file exists, append to file
 	if glob.glob(path):
 		file = h5py.File(path, 'a')
@@ -365,9 +380,9 @@ def KS(cluster, data_yax, data_cdist, sim_yax, sim_cdist, sigma, elem, location,
     timestr = time.strftime("%Y%m%d_%H%M%S")
     pid = str(os.getpid())
     if location == 'personal':
-    	path = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
+    	path = '/Users/chloecheng/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
     elif location == 'server':
-    	path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_'  + str(elem) + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
+    	path = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_'  + str(elem) + '_' + 'KS' + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5' 
     #If file exists, append to file
     if glob.glob(path):
     	file = h5py.File(path, 'a')
