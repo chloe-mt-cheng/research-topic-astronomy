@@ -42,7 +42,7 @@ def cum_post(D_cov, D_cov_limit, ks, ks_limit, sigma):
 	
 	return y_ax, cum_sigma
 
-def ABC(Dcov, ks, sigma):
+def ABC(Dcov, ks, sigma, num_points_Dcov, num_points_ks):
 	"""Return the 68% and 95% upper limits on the intrinsic abundance scatter in an open cluster.
 	
 	Parameters
@@ -53,6 +53,8 @@ def ABC(Dcov, ks, sigma):
 		Array of all KS distance summary statistics being considered
 	sigma : tuple
 		Array of all sigma values being considered
+	num_points : int
+		Number of points to use in cuts on summary statistics
 	
 	Returns
 	-------
@@ -67,8 +69,8 @@ def ABC(Dcov, ks, sigma):
 	ks_sorted = np.sort(ks)
 	
 	#Take the 1000 points where both summary statistics are closest to zero
-	D_cov_limit = Dcov_sorted[1000]
-	ks_limit = ks_sorted[1000]
+	D_cov_limit = Dcov_sorted[num_points_Dcov]
+	ks_limit = ks_sorted[num_points_ks]
 	
 	#Get the cumulative posterior distribution function
 	y_ax, cum_sigma = cum_post(Dcov, D_cov_limit, ks, ks_limit, sigma)
@@ -83,4 +85,4 @@ def ABC(Dcov, ks, sigma):
 	#Get the limit at 68% confidence 
 	limit_68 = sigma_68[0]
 	
-	return limit_95, limit_68
+	return limit_95, limit_68, D_cov_limit, ks_limit
