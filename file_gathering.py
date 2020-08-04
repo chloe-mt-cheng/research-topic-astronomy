@@ -41,10 +41,10 @@ def gather_files(name, location, elem):
     timestr = time.strftime("%Y%m%d_%H%M%S")
     elem_dict = {'element': ['C', 'N', 'O', 'NA', 'MG', 'AL', 'SI', 'S', 'K', 'CA', 'TI', 'V', 'MN', 'FE', 'NI']}
     if location == 'personal':
-    	path = '/Users/chloecheng/Personal/run_files/' + cluster + '/' #Path to directory created during run
+    	path = '/Users/chloecheng/Personal/run_files_' + cluster + '_' + str(elem) + '/' + cluster + '/' #Path to directory created during run
     	outerpath = '/Users/chloecheng/Personal/' + cluster + '/' #Path to main cluster directory
     elif location == 'server':
-    	path = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + cluster + '/' #Path to directory created during run
+    	path = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + cluster + '_' + str(elem) + '/' + cluster + '/' #Path to directory created during run
     	outerpath = '/geir_data/scr/ccheng/AST425/Personal/' + cluster + '/' #Path to main cluster directory
     
     #Get all file names and sort
@@ -271,9 +271,9 @@ def gather_files(name, location, elem):
         
     #Delete the directory
     if location == 'personal':
-    	shutil.rmtree('/Users/chloecheng/Personal/run_files/')
+    	shutil.rmtree('/Users/chloecheng/Personal/run_files_' + cluster + '_' + str(elem) + '/')
     elif location == 'server':
-    	shutil.rmtree('/geir_data/scr/ccheng/AST425/Personal/run_files/')
+    	shutil.rmtree('/geir_data/scr/ccheng/AST425/Personal/run_files_' + cluster + '_' + str(elem) + '/')
 
 if __name__ == '__main__':
 	arguments = docopt(__doc__)
