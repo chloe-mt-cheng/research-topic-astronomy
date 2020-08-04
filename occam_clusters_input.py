@@ -23,7 +23,6 @@ from apogee.tools.path import change_dr
 from apogee.spec import window
 from apogee.tools.read import rcsample
 change_dr('14') #use DR14
-from apogee.tools import apStarInds
 #astropy helper functions
 import astropy.io.fits as afits
 #basic math and plotting
@@ -518,24 +517,12 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, locatio
     	ind = ind.flatten()
     	
     	#Get the fluxes and errors from spectra
-    	#Limits of DR12 detectors
-    	dr12_d1_left = apStarInds['12']['blue'][0]
-    	dr12_d1_right = apStarInds['12']['blue'][-1]
-    	dr12_d2_left = apStarInds['12']['green'][0]
-    	dr12_d2_right = apStarInds['12']['green'][-1]
-    	dr12_d3_left = apStarInds['12']['red'][0]
-    	dr12_d3_right = apStarInds['12']['red'][-1]
-    	
     	elem_points = np.zeros((len(ind), len_spectra))
     	elem_err = np.zeros((len(ind), len_spectra))
     	for i in range(0, len(ind)):
     		for j in range(0, len_spectra):
-    			if ind[i] < dr12_d1_left or (dr12_d1_right < ind[i] < dr12_d2_left) or (dr12_d2_right < ind[i] < dr12_d3_left) or ind[i] > dr12_d3_right:
-    				elem_points[i][j] = np.nan
-    				elem_err[i][j] = np.nan
-    			else:
-    				elem_points[i][j] = spectra[j][ind[i]]
-    				elem_err[i][j] = spectra_errs[j][ind[i]] #APOGEE measured errors
+    			elem_points[i][j] = spectra[j][ind[i]]
+    			elem_err[i][j] = spectra_errs[j][ind[i]] #APOGEE measured errors
     	
     	#Use only pixels with more than 5 points
     	final_points = []
@@ -616,9 +603,9 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, locatio
     		pid = str(os.getpid())
     		if sigma_val == None:
     			if location == 'personal':
-    				path_dat = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    				path_dat = '/Users/chloecheng/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     			elif location == 'server':
-    				path_dat = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    				path_dat = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     	
     			#If the file exists, output the desired variables
     			if glob.glob(path_dat):
@@ -637,9 +624,9 @@ def fit_func(elem, name, spectra, spectra_errs, T, dat_type, run_number, locatio
     		#If we are looking at simulations
     		else:
     			if location == 'personal':
-    				path_sim = '/Users/chloecheng/Personal/run_files/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    				path_sim = '/Users/chloecheng/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string + '/' + name_string + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     			elif location == 'server':
-    				path_sim = '/geir_data/scr/ccheng/AST425/Personal/run_files/' + name_string  + '/' + name_string  + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
+    				path_sim = '/geir_data/scr/ccheng/AST425/Personal/run_files_' + name_string + '_' + str(elem) + '/' + name_string  + '/' + name_string  + '_' + str(elem) + '_' + 'fit_res' + '_' + str(dat_type) + '_' + timestr + '_' + pid + '_' + str(run_number) + '.hdf5'
     	
     			#If the file exists, append to the file
     			if glob.glob(path_sim):
